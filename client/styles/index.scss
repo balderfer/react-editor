@@ -1,0 +1,29 @@
+@import "reset";
+
+.editor-content-container {
+  position: relative;
+
+  .editor-placeholder {
+    position: absolute;
+    z-index: 0;
+    color: gray;
+  }
+
+  .editor-content {
+    position: relative;
+    z-index: 1;
+    -webkit-user-modify: read-write-plaintext-only;
+
+    .bold {
+      font-weight: 700;
+    }
+
+    .italic {
+      font-style: italic;
+    }
+
+    .link {
+      text-decoration: underline;
+    }
+  }
+}
