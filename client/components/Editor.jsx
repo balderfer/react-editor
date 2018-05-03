@@ -47,7 +47,6 @@ export default class Editor extends React.Component {
       let selectionRangeEnd = selectionRange.endOffset;
 
       if (selectionRange.startContainer.parentNode.nodeName === "SPAN") {
-        // console.log(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeStart += parseInt(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
@@ -77,55 +76,62 @@ export default class Editor extends React.Component {
   }
 
   handleDeleteContentBackward() {
+    if (this.getRangeStart() === this.getRangeEnd()) {
+      if (this.getRangeStart() > 0) {
+        this.handleSingleCharacterDelete();
+      }
+    } else {
+      this.handleSelectionDelete();
+    }
+  }
+
+  handleSelectionDelete() {
     this.setState((prevState) => {
+      const preText = prevState.text.substring(0, this.getRangeStart());
+      const postText = prevState.text.substring(this.getRangeEnd());
+      const newText = preText + postText;
+      prevState.characterStyles.splice(this.getRangeStart(), this.getRangeLength());
 
-      let newText;
-      let shouldUpdate = false;
-
-      // Remove one character before range start
-      if (this.getRangeStart() === this.getRangeEnd()) {
-        if (this.getRangeStart() > 0) {
-          const preText = prevState.text.substring(0, this.getRangeStart() - 1);
-          const postText = prevState.text.substring(this.getRangeStart());
-          newText = preText + postText;
-          prevState.characterStyles.splice(this.getRangeStart() - 1);
-          shouldUpdate = true;
-        }
-      }
-
-      // Remove all characters within range
-      else {
-        const preText = prevState.text.substring(0, this.getRangeStart());
-        const postText = prevState.text.substring(this.getRangeEnd());
-        newText = preText + postText;
-        prevState.characterStyles.splice(this.getRangeStart(), this.getRangeLength());
-        shouldUpdate = true;
-      }
-
-      if (shouldUpdate) {
-        return {
-          text: newText,
-          characterStyles: prevState.characterStyles
-        };
-      }
+      return {
+        text: newText,
+        characterStyles: prevState.characterStyles
+      };
     });
   }
 
-  handleInsertLineBreak(e) {
-    e.preventDefault();
+  handleSingleCharacterDelete(prevState) {
+    this.setState((prevState) => {
+      const preText = prevState.text.substring(0, this.getRangeStart() - 1);
+      const postText = prevState.text.substring(this.getRangeStart());
+      const newText = preText + postText;
+      prevState.characterStyles.splice(this.getRangeStart() - 1);
+
+      return {
+        text: newText,
+        characterStyles: prevState.characterStyles
+      };
+    });
   }
 
   handleInput(e) {
-    const newText = e.nativeEvent.data;
-    console.log(e.nativeEvent);
-
     if (e.nativeEvent.inputType === "insertText") {
-      this.handleInsertText(newText);
+      this.handleInsertText(e.nativeEvent.data);
     } else if (e.nativeEvent.inputType === "deleteContentBackward") {
       this.handleDeleteContentBackward();
-    } else if (e.nativeEvent.inputType === "insertLineBreak") {
-      this.handleInsertLineBreak(e);
     }
+  }
+
+  handleLineBreak(e) {
+    // Add a new editor block with contents after the cursor
+    this.props.addBlock(this.props.index + 1, this.state.text.substring(this.getRangeEnd()), this.state.characterStyles.slice(this.getRangeEnd()));
+
+    // Remove trailing content from this block
+    this.setState((prevState) => {
+      return {
+        text: prevState.text.substring(0, this.getRangeStart()),
+        characterStyles: prevState.characterStyles.slice(0, this.getRangeStart())
+      };
+    });
   }
 
   renderPlaceholder() {
@@ -148,6 +154,8 @@ export default class Editor extends React.Component {
             text={this.state.text}
             handleSelection={this.handleSelection.bind(this)}
             handleInput={this.handleInput.bind(this)}
+            handleLineBreak={this.handleLineBreak.bind(this)}
+            shouldFocus={this.props.shouldFocus}
             characterStyles={this.state.characterStyles}
           />
         </div>

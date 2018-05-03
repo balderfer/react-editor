@@ -14,7 +14,7 @@ export function renderFormattedText(text, characterStyles) {
     // Style changes here, create a new node and clear textQueue and update currentStyle
     if (!_.isEqual(currentStyle, characterStyles[i])) {
       formattedText.push(
-        `<span data-node-index=${nodeIndex} class=${classNames(currentStyle)}>${textQueue}</span>`
+        `<span data-node-index=${nodeIndex} class="${classNames(currentStyle)}">${textQueue}</span>`
       );
       textQueue = "";
       currentStyle = characterStyles[i];
@@ -25,7 +25,7 @@ export function renderFormattedText(text, characterStyles) {
   }
 
   formattedText.push(
-    `<span data-node-index=${nodeIndex} class=${classNames(currentStyle)}>${textQueue}</span>`
+    `<span data-node-index=${nodeIndex} class="${classNames(currentStyle)}">${textQueue}</span>`
   );
 
   return formattedText.join("");

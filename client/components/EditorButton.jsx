@@ -2,7 +2,8 @@ import React from 'react';
 
 export default class EditorButton extends React.Component {
 
-  handleClick() {
+  handleClick(e) {
+    e.preventDefault();
     this.props.handleClick({
       style: this.props.style
     });

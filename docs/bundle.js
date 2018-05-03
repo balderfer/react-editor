@@ -833,6 +833,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_react_dom__ = __webpack_require__(16);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_react_dom___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_react_dom__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__components_Editor_jsx__ = __webpack_require__(25);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_uuid_v1__ = __webpack_require__(40);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_uuid_v1___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_uuid_v1__);
+
 
 
 
@@ -848,18 +851,43 @@ class Index extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
   getInitialState() {
     const defaultText = "";
     return {
-      data: {
+      content: [{
+        id: __WEBPACK_IMPORTED_MODULE_3_uuid_v1___default()(),
         text: defaultText,
         characterStyles: []
-      }
+      }],
+      focusedIndex: null
     };
+  }
+
+  addBlock(insertIndex, initialText, initialCharacterStyles) {
+    this.setState(prevState => {
+      prevState.content.splice(insertIndex, 0, {
+        id: __WEBPACK_IMPORTED_MODULE_3_uuid_v1___default()(),
+        text: initialText,
+        characterStyles: initialCharacterStyles
+      });
+
+      return {
+        content: prevState.content,
+        shouldFocusIndex: insertIndex
+      };
+    });
   }
 
   render() {
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
       'div',
       { className: 'content' },
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_2__components_Editor_jsx__["a" /* default */], { data: this.state.data })
+      this.state.content.map((data, index) => {
+        return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_2__components_Editor_jsx__["a" /* default */], {
+          key: data.id,
+          index: index,
+          data: data,
+          shouldFocus: this.state.shouldFocusIndex === index,
+          addBlock: this.addBlock.bind(this)
+        });
+      })
     );
   }
 }
@@ -19568,7 +19596,6 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
       let selectionRangeEnd = selectionRange.endOffset;
 
       if (selectionRange.startContainer.parentNode.nodeName === "SPAN") {
-        // console.log(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeStart += parseInt(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
@@ -19597,55 +19624,62 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
   }
 
   handleDeleteContentBackward() {
+    if (this.getRangeStart() === this.getRangeEnd()) {
+      if (this.getRangeStart() > 0) {
+        this.handleSingleCharacterDelete();
+      }
+    } else {
+      this.handleSelectionDelete();
+    }
+  }
+
+  handleSelectionDelete() {
     this.setState(prevState => {
+      const preText = prevState.text.substring(0, this.getRangeStart());
+      const postText = prevState.text.substring(this.getRangeEnd());
+      const newText = preText + postText;
+      prevState.characterStyles.splice(this.getRangeStart(), this.getRangeLength());
 
-      let newText;
-      let shouldUpdate = false;
-
-      // Remove one character before range start
-      if (this.getRangeStart() === this.getRangeEnd()) {
-        if (this.getRangeStart() > 0) {
-          const preText = prevState.text.substring(0, this.getRangeStart() - 1);
-          const postText = prevState.text.substring(this.getRangeStart());
-          newText = preText + postText;
-          prevState.characterStyles.splice(this.getRangeStart() - 1);
-          shouldUpdate = true;
-        }
-      }
-
-      // Remove all characters within range
-      else {
-          const preText = prevState.text.substring(0, this.getRangeStart());
-          const postText = prevState.text.substring(this.getRangeEnd());
-          newText = preText + postText;
-          prevState.characterStyles.splice(this.getRangeStart(), this.getRangeLength());
-          shouldUpdate = true;
-        }
-
-      if (shouldUpdate) {
-        return {
-          text: newText,
-          characterStyles: prevState.characterStyles
-        };
-      }
+      return {
+        text: newText,
+        characterStyles: prevState.characterStyles
+      };
     });
   }
 
-  handleInsertLineBreak(e) {
-    e.preventDefault();
+  handleSingleCharacterDelete(prevState) {
+    this.setState(prevState => {
+      const preText = prevState.text.substring(0, this.getRangeStart() - 1);
+      const postText = prevState.text.substring(this.getRangeStart());
+      const newText = preText + postText;
+      prevState.characterStyles.splice(this.getRangeStart() - 1);
+
+      return {
+        text: newText,
+        characterStyles: prevState.characterStyles
+      };
+    });
   }
 
   handleInput(e) {
-    const newText = e.nativeEvent.data;
-    console.log(e.nativeEvent);
-
     if (e.nativeEvent.inputType === "insertText") {
-      this.handleInsertText(newText);
+      this.handleInsertText(e.nativeEvent.data);
     } else if (e.nativeEvent.inputType === "deleteContentBackward") {
       this.handleDeleteContentBackward();
-    } else if (e.nativeEvent.inputType === "insertLineBreak") {
-      this.handleInsertLineBreak(e);
     }
+  }
+
+  handleLineBreak(e) {
+    // Add a new editor block with contents after the cursor
+    this.props.addBlock(this.props.index + 1, this.state.text.substring(this.getRangeEnd()), this.state.characterStyles.slice(this.getRangeEnd()));
+
+    // Remove trailing content from this block
+    this.setState(prevState => {
+      return {
+        text: prevState.text.substring(0, this.getRangeStart()),
+        characterStyles: prevState.characterStyles.slice(0, this.getRangeStart())
+      };
+    });
   }
 
   renderPlaceholder() {
@@ -19671,6 +19705,8 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
           text: this.state.text,
           handleSelection: this.handleSelection.bind(this),
           handleInput: this.handleInput.bind(this),
+          handleLineBreak: this.handleLineBreak.bind(this),
+          shouldFocus: this.props.shouldFocus,
           characterStyles: this.state.characterStyles
         })
       )
@@ -19732,7 +19768,8 @@ class EditorControls extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compo
 
 class EditorButton extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
 
-  handleClick() {
+  handleClick(e) {
+    e.preventDefault();
     this.props.handleClick({
       style: this.props.style
     });
@@ -19780,7 +19817,7 @@ class EditorPlaceholder extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Co
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_react__ = __webpack_require__(0);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_react___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_react__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__utils_renderUtils_js__ = __webpack_require__(40);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__utils_renderUtils_js__ = __webpack_require__(30);
 
 
 
@@ -19788,10 +19825,34 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
 
   constructor(props) {
     super(props);
+
+    this.onKeyDown = null;
+  }
+
+  componentDidMount() {
+    if (this.props.shouldFocus) this.elem.focus();
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return nextProps.text !== this.elem["innerText"] || nextProps.characterStyles != this.props.characterStyles;
+  }
+
+  handleInput(e) {
+    this.props.handleInput(e);
+  }
+
+  handleFocus(e) {
+    this.onKeyDown = e => {
+      if (e.which === 13) {
+        e.preventDefault();
+        this.props.handleLineBreak();
+      }
+    };
+    this.elem.addEventListener("keydown", this.onKeyDown);
+  }
+
+  handleBlur(e) {
+    this.elem.removeEventListener("keydown", this.onKeyDown);
   }
 
   render() {
@@ -19803,7 +19864,9 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
         this.elem = elem;
       },
       onSelect: this.props.handleSelection,
-      onInput: this.props.handleInput,
+      onInput: this.handleInput.bind(this),
+      onFocus: this.handleFocus.bind(this),
+      onBlur: this.handleBlur.bind(this),
       dangerouslySetInnerHTML: { __html: Object(__WEBPACK_IMPORTED_MODULE_1__utils_renderUtils_js__["a" /* renderFormattedText */])(this.props.text, this.props.characterStyles) }
     });
   }
@@ -19813,7 +19876,45 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
 
 
 /***/ }),
-/* 30 */,
+/* 30 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony export (immutable) */ __webpack_exports__["a"] = renderFormattedText;
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__(31);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_classnames__ = __webpack_require__(34);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_classnames___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_classnames__);
+
+
+
+function renderFormattedText(text, characterStyles) {
+  if (characterStyles.length === 0) return "";
+
+  let formattedText = [];
+  let textQueue = "";
+  let currentStyle = characterStyles[0];
+  let nodeIndex = 0;
+  let i = 0;
+
+  for (i; i < characterStyles.length; i++) {
+    // Style changes here, create a new node and clear textQueue and update currentStyle
+    if (!__WEBPACK_IMPORTED_MODULE_0_underscore___default.a.isEqual(currentStyle, characterStyles[i])) {
+      formattedText.push(`<span data-node-index=${nodeIndex} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+      textQueue = "";
+      currentStyle = characterStyles[i];
+      nodeIndex = i;
+    }
+
+    textQueue += text[i];
+  }
+
+  formattedText.push(`<span data-node-index=${nodeIndex} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+
+  return formattedText.join("");
+}
+
+/***/ }),
 /* 31 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -22202,42 +22303,185 @@ module.exports = function (css) {
 
 /***/ }),
 /* 40 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/***/ (function(module, exports, __webpack_require__) {
 
-"use strict";
-/* harmony export (immutable) */ __webpack_exports__["a"] = renderFormattedText;
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore__ = __webpack_require__(31);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_underscore___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_underscore__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_classnames__ = __webpack_require__(34);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_classnames___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_classnames__);
+var rng = __webpack_require__(41);
+var bytesToUuid = __webpack_require__(42);
 
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
 
+var _nodeId;
+var _clockseq;
 
-function renderFormattedText(text, characterStyles) {
-  if (characterStyles.length === 0) return "";
+// Previous uuid creation time
+var _lastMSecs = 0;
+var _lastNSecs = 0;
 
-  let formattedText = [];
-  let textQueue = "";
-  let currentStyle = characterStyles[0];
-  let nodeIndex = 0;
-  let i = 0;
+// See https://github.com/broofa/node-uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
 
-  for (i; i < characterStyles.length; i++) {
-    // Style changes here, create a new node and clear textQueue and update currentStyle
-    if (!__WEBPACK_IMPORTED_MODULE_0_underscore___default.a.isEqual(currentStyle, characterStyles[i])) {
-      formattedText.push(`<span data-node-index=${nodeIndex} class=${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}>${textQueue}</span>`);
-      textQueue = "";
-      currentStyle = characterStyles[i];
-      nodeIndex = i;
+  options = options || {};
+  var node = options.node || _nodeId;
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // node and clockseq need to be initialized to random values if they're not
+  // specified.  We do this lazily to minimize issues related to insufficient
+  // system entropy.  See #189
+  if (node == null || clockseq == null) {
+    var seedBytes = rng();
+    if (node == null) {
+      // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+      node = _nodeId = [
+        seedBytes[0] | 0x01,
+        seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]
+      ];
     }
-
-    textQueue += text[i];
+    if (clockseq == null) {
+      // Per 4.2.2, randomize (14 bit) clockseq
+      clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 0x3fff;
+    }
   }
 
-  formattedText.push(`<span data-node-index=${nodeIndex} class=${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}>${textQueue}</span>`);
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
 
-  return formattedText.join("");
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  for (var n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : bytesToUuid(b);
 }
+
+module.exports = v1;
+
+
+/***/ }),
+/* 41 */
+/***/ (function(module, exports) {
+
+// Unique ID creation requires a high quality random # generator.  In the
+// browser this is a little complicated due to unknown quality of Math.random()
+// and inconsistent support for the `crypto` API.  We do the best we can via
+// feature-detection
+
+// getRandomValues needs to be invoked in a context where "this" is a Crypto implementation.
+var getRandomValues = (typeof(crypto) != 'undefined' && crypto.getRandomValues.bind(crypto)) ||
+                      (typeof(msCrypto) != 'undefined' && msCrypto.getRandomValues.bind(msCrypto));
+if (getRandomValues) {
+  // WHATWG crypto RNG - http://wiki.whatwg.org/wiki/Crypto
+  var rnds8 = new Uint8Array(16); // eslint-disable-line no-undef
+
+  module.exports = function whatwgRNG() {
+    getRandomValues(rnds8);
+    return rnds8;
+  };
+} else {
+  // Math.random()-based (RNG)
+  //
+  // If all else fails, use Math.random().  It's fast, but is of unspecified
+  // quality.
+  var rnds = new Array(16);
+
+  module.exports = function mathRNG() {
+    for (var i = 0, r; i < 16; i++) {
+      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+      rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+    }
+
+    return rnds;
+  };
+}
+
+
+/***/ }),
+/* 42 */
+/***/ (function(module, exports) {
+
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  return bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+module.exports = bytesToUuid;
+
 
 /***/ })
 /******/ ]);
