@@ -157,7 +157,6 @@ export default class Editor extends React.Component {
   handleReinstateRange() {
     const selection = window.getSelection();
     if (selection.rangeCount > 0) selection.removeAllRanges();
-    console.log(this.state.range);
     selection.addRange(this.state.range);
   }
 
