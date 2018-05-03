@@ -1,5 +1,15 @@
 @import "reset";
 
+$indentWidth: 40px;
+$pageWidth: 560px;
+
+.content {
+  max-width: $pageWidth;
+  margin: 0 auto;
+  margin-top: 60px;
+  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl;
+}
+
 .editor-content-container {
   position: relative;
 
@@ -7,12 +17,20 @@
     position: absolute;
     z-index: 0;
     color: gray;
+    height: 24px;
+    padding: 7px 8px 2px;
   }
 
   .editor-content {
     position: relative;
     z-index: 1;
     -webkit-user-modify: read-write-plaintext-only;
+    height: 24px;
+    padding: 7px 8px 2px;
+
+    &:focus {
+      outline: none;
+    }
 
     .bold {
       font-weight: 700;
@@ -24,6 +42,44 @@
 
     .link {
       text-decoration: underline;
+    }
+  } 
+}
+
+.editor {
+  position: relative;
+
+  .editor-controls {
+    position: absolute;
+    height: 24px;
+    top: -24px;
+    box-shadow: 0 2px 4px gray;
+    padding: 2px;
+    box-sizing: border-box;
+    z-index: 10;
+    background: white;
+    border-radius: 4px;
+
+    .editor-controls-button {
+      // box-shadow: 0 1px 2px gray;
+      font-size: 12px;
+      text-transform: uppercase;
+      height: 20px;
+      margin: 0;
+      margin-right: 2px;
+      font-weight: 700;
+      color: gray;
+      border-radius: 2px;
+      border: none;
+
+      &:last-child {
+        margin-right: 0;
+      }
+
+      &:hover {
+        background: lightgray;
+        color: black;
+      }
     }
   }
 }

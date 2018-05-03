@@ -51,7 +51,9 @@ export default class Editor extends React.Component {
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
       this.setState({
-        selectionRange: [selectionRangeStart, selectionRangeEnd]
+        selectionRange: [selectionRangeStart, selectionRangeEnd],
+        range: selectionRange,
+        shouldShowControls: selectionRangeStart !== selectionRangeEnd
       })
     }
   }
@@ -134,20 +136,55 @@ export default class Editor extends React.Component {
     });
   }
 
+  handleBlur() {
+    this.setState({
+      shouldShowControls: false
+    });
+  }
+
+  handleFocus() {
+    this.props.handleFocusIndex(this.props.index);
+  }
+
+  handleNavigateUp() {
+    this.props.handleFocusIndex(this.props.index - 1);
+  }
+
+  handleNavigateDown() {
+    this.props.handleFocusIndex(this.props.index + 1);
+  }
+
+  handleReinstateRange() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) selection.removeAllRanges();
+    console.log(this.state.range);
+    selection.addRange(this.state.range);
+  }
+
   renderPlaceholder() {
-    if (this.shouldPlaceholderShow()) {
+    if (this.shouldPlaceholderShow() && this.props.shouldFocus) {
       return <EditorPlaceholder />
+    }
+  }
+
+  renderControls() {
+    if (this.state.shouldShowControls) {
+      return (
+        <EditorControls
+          selectionRange={this.state.selectionRange}
+          range={this.state.range}
+          reinstateRange={this.handleReinstateRange.bind(this)}
+          characterStyles={this.state.characterStyles}
+          updateCharacterStyles={this.handleUpdateCharacterStyles.bind(this)}
+        />
+      );
     }
   }
 
   render() {
     return (
       <div className="editor">
-        <EditorControls
-          selectionRange={this.state.selectionRange}
-          characterStyles={this.state.characterStyles}
-          updateCharacterStyles={this.handleUpdateCharacterStyles.bind(this)}
-        />
+        {this.renderControls()}
         <div className="editor-content-container">
           {this.renderPlaceholder()}
           <EditorContent
@@ -155,6 +192,10 @@ export default class Editor extends React.Component {
             handleSelection={this.handleSelection.bind(this)}
             handleInput={this.handleInput.bind(this)}
             handleLineBreak={this.handleLineBreak.bind(this)}
+            handleFocus={this.handleFocus.bind(this)}
+            handleBlur={this.handleBlur.bind(this)}
+            handleNavigateUp={this.handleNavigateUp.bind(this)}
+            handleNavigateDown={this.handleNavigateDown.bind(this)}
             shouldFocus={this.props.shouldFocus}
             characterStyles={this.state.characterStyles}
           />

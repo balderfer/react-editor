@@ -17,11 +17,13 @@ export default class EditorControls extends React.Component {
   }
 
   render() {
+    console.log(this.props.range);
+
     return (
       <div className="editor-controls">
-        <EditorButton contents="Bold" style="bold" handleClick={this.handleClick.bind(this)}/>
-        <EditorButton contents="Italic" style="italic" handleClick={this.handleClick.bind(this)}/>
-        <EditorButton contents="Link" style="link" handleClick={this.handleClick.bind(this)}/>
+        <EditorButton contents="Bold" style="bold" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
+        <EditorButton contents="Italic" style="italic" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
+        <EditorButton contents="Link" style="link" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
       </div>
     );
   }

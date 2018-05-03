@@ -21,8 +21,16 @@ class Index extends React.Component {
           characterStyles: []
         }
       ],
-      focusedIndex: null
+      focusedIndex: 0
     }
+  }
+
+  handleFocusIndex(index) {
+    if (index < 0) index = 0;
+    if (index >= this.state.content.length) index = this.state.content.length - 1;
+    this.setState({
+      focusedIndex: index
+    });
   }
 
   addBlock(insertIndex, initialText, initialCharacterStyles) {
@@ -35,7 +43,7 @@ class Index extends React.Component {
 
       return {
         content: prevState.content,
-        shouldFocusIndex: insertIndex
+        focusedIndex: insertIndex
       };
     });
   }
@@ -49,7 +57,8 @@ class Index extends React.Component {
               key={data.id}
               index={index}
               data={data}
-              shouldFocus={this.state.shouldFocusIndex === index}
+              shouldFocus={this.state.focusedIndex === index}
+              handleFocusIndex={this.handleFocusIndex.bind(this)}
               addBlock={this.addBlock.bind(this)}
             />
           );

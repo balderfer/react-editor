@@ -833,14 +833,14 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_react_dom__ = __webpack_require__(16);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_react_dom___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_react_dom__);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__components_Editor_jsx__ = __webpack_require__(25);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_uuid_v1__ = __webpack_require__(40);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_uuid_v1__ = __webpack_require__(35);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_uuid_v1___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_uuid_v1__);
 
 
 
 
 
-__webpack_require__(35);
+__webpack_require__(38);
 
 class Index extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
   constructor(props) {
@@ -856,8 +856,16 @@ class Index extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
         text: defaultText,
         characterStyles: []
       }],
-      focusedIndex: null
+      focusedIndex: 0
     };
+  }
+
+  handleFocusIndex(index) {
+    if (index < 0) index = 0;
+    if (index >= this.state.content.length) index = this.state.content.length - 1;
+    this.setState({
+      focusedIndex: index
+    });
   }
 
   addBlock(insertIndex, initialText, initialCharacterStyles) {
@@ -870,7 +878,7 @@ class Index extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
 
       return {
         content: prevState.content,
-        shouldFocusIndex: insertIndex
+        focusedIndex: insertIndex
       };
     });
   }
@@ -884,7 +892,8 @@ class Index extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
           key: data.id,
           index: index,
           data: data,
-          shouldFocus: this.state.shouldFocusIndex === index,
+          shouldFocus: this.state.focusedIndex === index,
+          handleFocusIndex: this.handleFocusIndex.bind(this),
           addBlock: this.addBlock.bind(this)
         });
       })
@@ -19600,7 +19609,9 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
       this.setState({
-        selectionRange: [selectionRangeStart, selectionRangeEnd]
+        selectionRange: [selectionRangeStart, selectionRangeEnd],
+        range: selectionRange,
+        shouldShowControls: selectionRangeStart !== selectionRangeEnd
       });
     }
   }
@@ -19682,9 +19693,46 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
     });
   }
 
+  handleBlur() {
+    this.setState({
+      shouldShowControls: false
+    });
+  }
+
+  handleFocus() {
+    this.props.handleFocusIndex(this.props.index);
+  }
+
+  handleNavigateUp() {
+    this.props.handleFocusIndex(this.props.index - 1);
+  }
+
+  handleNavigateDown() {
+    this.props.handleFocusIndex(this.props.index + 1);
+  }
+
+  handleReinstateRange() {
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) selection.removeAllRanges();
+    console.log(this.state.range);
+    selection.addRange(this.state.range);
+  }
+
   renderPlaceholder() {
-    if (this.shouldPlaceholderShow()) {
+    if (this.shouldPlaceholderShow() && this.props.shouldFocus) {
       return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_2__EditorPlaceholder_jsx__["a" /* default */], null);
+    }
+  }
+
+  renderControls() {
+    if (this.state.shouldShowControls) {
+      return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorControls_jsx__["a" /* default */], {
+        selectionRange: this.state.selectionRange,
+        range: this.state.range,
+        reinstateRange: this.handleReinstateRange.bind(this),
+        characterStyles: this.state.characterStyles,
+        updateCharacterStyles: this.handleUpdateCharacterStyles.bind(this)
+      });
     }
   }
 
@@ -19692,11 +19740,7 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
       'div',
       { className: 'editor' },
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorControls_jsx__["a" /* default */], {
-        selectionRange: this.state.selectionRange,
-        characterStyles: this.state.characterStyles,
-        updateCharacterStyles: this.handleUpdateCharacterStyles.bind(this)
-      }),
+      this.renderControls(),
       __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
         'div',
         { className: 'editor-content-container' },
@@ -19706,6 +19750,10 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
           handleSelection: this.handleSelection.bind(this),
           handleInput: this.handleInput.bind(this),
           handleLineBreak: this.handleLineBreak.bind(this),
+          handleFocus: this.handleFocus.bind(this),
+          handleBlur: this.handleBlur.bind(this),
+          handleNavigateUp: this.handleNavigateUp.bind(this),
+          handleNavigateDown: this.handleNavigateDown.bind(this),
           shouldFocus: this.props.shouldFocus,
           characterStyles: this.state.characterStyles
         })
@@ -19744,12 +19792,14 @@ class EditorControls extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compo
   }
 
   render() {
+    console.log(this.props.range);
+
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
       'div',
       { className: 'editor-controls' },
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Bold', style: 'bold', handleClick: this.handleClick.bind(this) }),
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Italic', style: 'italic', handleClick: this.handleClick.bind(this) }),
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Link', style: 'link', handleClick: this.handleClick.bind(this) })
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Bold', style: 'bold', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange }),
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Italic', style: 'italic', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange }),
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Link', style: 'link', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange })
     );
   }
 
@@ -19768,17 +19818,27 @@ class EditorControls extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compo
 
 class EditorButton extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
 
-  handleClick(e) {
-    e.preventDefault();
-    this.props.handleClick({
-      style: this.props.style
-    });
+  constructor(props) {
+    super(props);
+
+    this.onMouseDown = e => {
+      e.preventDefault();
+      this.props.handleClick({
+        style: this.props.style
+      });
+    };
   }
 
   render() {
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
-      'button',
-      { onClick: this.handleClick.bind(this) },
+      "button",
+      {
+        onMouseDown: this.onMouseDown,
+        className: "editor-controls-button",
+        ref: elem => {
+          this.elem = elem;
+        }
+      },
       this.props.contents
     );
   }
@@ -19830,29 +19890,40 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
   }
 
   componentDidMount() {
+    this.onKeyDown = e => {
+      if (e.which === 13) {
+        e.preventDefault();
+        this.props.handleLineBreak();
+      } else if (e.which === 38) {
+        e.preventDefault();
+        this.props.handleNavigateUp();
+      } else if (e.which === 40) {
+        e.preventDefault();
+        this.props.handleNavigateDown();
+      }
+    };
+    this.elem.addEventListener("keydown", this.onKeyDown);
     if (this.props.shouldFocus) this.elem.focus();
   }
 
+  componentDidUpdate() {
+    if (this.props.shouldFocus) this.elem.focus();
+  }
+
+  componentWillUnmount() {
+    this.elem.removeEventListener("keydown", this.onKeyDown);
+  }
+
   shouldComponentUpdate(nextProps, nextState) {
-    return nextProps.text !== this.elem["innerText"] || nextProps.characterStyles != this.props.characterStyles;
+    return nextProps.text !== this.elem["innerText"] || nextProps.characterStyles != this.props.characterStyles || this.props.shouldFocus !== nextProps.shouldFocus;
   }
 
   handleInput(e) {
     this.props.handleInput(e);
   }
 
-  handleFocus(e) {
-    this.onKeyDown = e => {
-      if (e.which === 13) {
-        e.preventDefault();
-        this.props.handleLineBreak();
-      }
-    };
-    this.elem.addEventListener("keydown", this.onKeyDown);
-  }
-
   handleBlur(e) {
-    this.elem.removeEventListener("keydown", this.onKeyDown);
+    this.props.handleBlur();
   }
 
   render() {
@@ -19865,7 +19936,7 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
       },
       onSelect: this.props.handleSelection,
       onInput: this.handleInput.bind(this),
-      onFocus: this.handleFocus.bind(this),
+      onFocus: this.props.handleFocus,
       onBlur: this.handleBlur.bind(this),
       dangerouslySetInnerHTML: { __html: Object(__WEBPACK_IMPORTED_MODULE_1__utils_renderUtils_js__["a" /* renderFormattedText */])(this.props.text, this.props.characterStyles) }
     });
@@ -21724,10 +21795,192 @@ var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
 /* 35 */
 /***/ (function(module, exports, __webpack_require__) {
 
+var rng = __webpack_require__(36);
+var bytesToUuid = __webpack_require__(37);
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+
+var _nodeId;
+var _clockseq;
+
+// Previous uuid creation time
+var _lastMSecs = 0;
+var _lastNSecs = 0;
+
+// See https://github.com/broofa/node-uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
+
+  options = options || {};
+  var node = options.node || _nodeId;
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // node and clockseq need to be initialized to random values if they're not
+  // specified.  We do this lazily to minimize issues related to insufficient
+  // system entropy.  See #189
+  if (node == null || clockseq == null) {
+    var seedBytes = rng();
+    if (node == null) {
+      // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+      node = _nodeId = [
+        seedBytes[0] | 0x01,
+        seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]
+      ];
+    }
+    if (clockseq == null) {
+      // Per 4.2.2, randomize (14 bit) clockseq
+      clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 0x3fff;
+    }
+  }
+
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
+
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  for (var n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : bytesToUuid(b);
+}
+
+module.exports = v1;
+
+
+/***/ }),
+/* 36 */
+/***/ (function(module, exports) {
+
+// Unique ID creation requires a high quality random # generator.  In the
+// browser this is a little complicated due to unknown quality of Math.random()
+// and inconsistent support for the `crypto` API.  We do the best we can via
+// feature-detection
+
+// getRandomValues needs to be invoked in a context where "this" is a Crypto implementation.
+var getRandomValues = (typeof(crypto) != 'undefined' && crypto.getRandomValues.bind(crypto)) ||
+                      (typeof(msCrypto) != 'undefined' && msCrypto.getRandomValues.bind(msCrypto));
+if (getRandomValues) {
+  // WHATWG crypto RNG - http://wiki.whatwg.org/wiki/Crypto
+  var rnds8 = new Uint8Array(16); // eslint-disable-line no-undef
+
+  module.exports = function whatwgRNG() {
+    getRandomValues(rnds8);
+    return rnds8;
+  };
+} else {
+  // Math.random()-based (RNG)
+  //
+  // If all else fails, use Math.random().  It's fast, but is of unspecified
+  // quality.
+  var rnds = new Array(16);
+
+  module.exports = function mathRNG() {
+    for (var i = 0, r; i < 16; i++) {
+      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+      rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+    }
+
+    return rnds;
+  };
+}
+
+
+/***/ }),
+/* 37 */
+/***/ (function(module, exports) {
+
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  return bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] + '-' +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]] +
+          bth[buf[i++]] + bth[buf[i++]];
+}
+
+module.exports = bytesToUuid;
+
+
+/***/ }),
+/* 38 */
+/***/ (function(module, exports, __webpack_require__) {
+
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(36);
+var content = __webpack_require__(39);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -21735,7 +21988,7 @@ var transform;
 var options = {}
 options.transform = transform
 // add the styles to the DOM
-var update = __webpack_require__(38)(content, options);
+var update = __webpack_require__(41)(content, options);
 if(content.locals) module.exports = content.locals;
 // Hot Module Replacement
 if(false) {
@@ -21752,21 +22005,21 @@ if(false) {
 }
 
 /***/ }),
-/* 36 */
+/* 39 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(37)(false);
+exports = module.exports = __webpack_require__(40)(false);
 // imports
 
 
 // module
-exports.push([module.i, "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\nhtml, body, div, span, applet, object, iframe,\nh1, h2, h3, h4, h5, h6, p, blockquote, pre,\na, abbr, acronym, address, big, button cite, code,\ndel, dfn, em, img, ins, kbd, q, s, samp,\nsmall, strike, strong, sub, sup, tt, var,\nb, u, i, center,\ndl, dt, dd, ol, ul, li,\nfieldset, form, label, legend,\ntable, caption, tbody, tfoot, thead, tr, th, td,\narticle, aside, canvas, details, embed,\nfigure, figcaption, footer, header, hgroup,\nmenu, nav, output, ruby, section, summary,\ntime, mark, audio, video {\n  margin: 0;\n  padding: 0;\n  border: 0;\n  font-size: 100%;\n  font: inherit;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl;\n  vertical-align: baseline; }\n\n@media only screen and (max-width: 768px) {\n  html, body {\n    font-size: 12px; } }\n\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure,\nfooter, header, hgroup, menu, nav, section {\n  display: block; }\n\nbody {\n  line-height: 1; }\n\nol, ul {\n  list-style: none; }\n\nblockquote, q {\n  quotes: none; }\n\nblockquote:before, blockquote:after,\nq:before, q:after {\n  content: '';\n  content: none; }\n\ntable {\n  border-collapse: collapse;\n  border-spacing: 0; }\n\n.editor-content-container {\n  position: relative; }\n  .editor-content-container .editor-placeholder {\n    position: absolute;\n    z-index: 0;\n    color: gray; }\n  .editor-content-container .editor-content {\n    position: relative;\n    z-index: 1;\n    -webkit-user-modify: read-write-plaintext-only; }\n    .editor-content-container .editor-content .bold {\n      font-weight: 700; }\n    .editor-content-container .editor-content .italic {\n      font-style: italic; }\n    .editor-content-container .editor-content .link {\n      text-decoration: underline; }\n", ""]);
+exports.push([module.i, "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\nhtml, body, div, span, applet, object, iframe,\nh1, h2, h3, h4, h5, h6, p, blockquote, pre,\na, abbr, acronym, address, big, button cite, code,\ndel, dfn, em, img, ins, kbd, q, s, samp,\nsmall, strike, strong, sub, sup, tt, var,\nb, u, i, center,\ndl, dt, dd, ol, ul, li,\nfieldset, form, label, legend,\ntable, caption, tbody, tfoot, thead, tr, th, td,\narticle, aside, canvas, details, embed,\nfigure, figcaption, footer, header, hgroup,\nmenu, nav, output, ruby, section, summary,\ntime, mark, audio, video {\n  margin: 0;\n  padding: 0;\n  border: 0;\n  font-size: 100%;\n  font: inherit;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl;\n  vertical-align: baseline; }\n\n@media only screen and (max-width: 768px) {\n  html, body {\n    font-size: 12px; } }\n\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure,\nfooter, header, hgroup, menu, nav, section {\n  display: block; }\n\nbody {\n  line-height: 1; }\n\nol, ul {\n  list-style: none; }\n\nblockquote, q {\n  quotes: none; }\n\nblockquote:before, blockquote:after,\nq:before, q:after {\n  content: '';\n  content: none; }\n\ntable {\n  border-collapse: collapse;\n  border-spacing: 0; }\n\n.content {\n  max-width: 560px;\n  margin: 0 auto;\n  margin-top: 60px;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl; }\n\n.editor-content-container {\n  position: relative; }\n  .editor-content-container .editor-placeholder {\n    position: absolute;\n    z-index: 0;\n    color: gray;\n    height: 24px;\n    padding: 7px 8px 2px; }\n  .editor-content-container .editor-content {\n    position: relative;\n    z-index: 1;\n    -webkit-user-modify: read-write-plaintext-only;\n    height: 24px;\n    padding: 7px 8px 2px; }\n    .editor-content-container .editor-content:focus {\n      outline: none; }\n    .editor-content-container .editor-content .bold {\n      font-weight: 700; }\n    .editor-content-container .editor-content .italic {\n      font-style: italic; }\n    .editor-content-container .editor-content .link {\n      text-decoration: underline; }\n\n.editor {\n  position: relative; }\n  .editor .editor-controls {\n    position: absolute;\n    height: 24px;\n    top: -24px;\n    box-shadow: 0 2px 4px gray;\n    padding: 2px;\n    box-sizing: border-box;\n    z-index: 10;\n    background: white;\n    border-radius: 4px; }\n    .editor .editor-controls .editor-controls-button {\n      font-size: 12px;\n      text-transform: uppercase;\n      height: 20px;\n      margin: 0;\n      margin-right: 2px;\n      font-weight: 700;\n      color: gray;\n      border-radius: 2px;\n      border: none; }\n      .editor .editor-controls .editor-controls-button:last-child {\n        margin-right: 0; }\n      .editor .editor-controls .editor-controls-button:hover {\n        background: lightgray;\n        color: black; }\n", ""]);
 
 // exports
 
 
 /***/ }),
-/* 37 */
+/* 40 */
 /***/ (function(module, exports) {
 
 /*
@@ -21848,7 +22101,7 @@ function toComment(sourceMap) {
 
 
 /***/ }),
-/* 38 */
+/* 41 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
@@ -21894,7 +22147,7 @@ var singleton = null;
 var	singletonCounter = 0;
 var	stylesInsertedAtTop = [];
 
-var	fixUrls = __webpack_require__(39);
+var	fixUrls = __webpack_require__(42);
 
 module.exports = function(list, options) {
 	if (typeof DEBUG !== "undefined" && DEBUG) {
@@ -22207,7 +22460,7 @@ function updateLink (link, options, obj) {
 
 
 /***/ }),
-/* 39 */
+/* 42 */
 /***/ (function(module, exports) {
 
 
@@ -22299,188 +22552,6 @@ module.exports = function (css) {
 	// send back the fixed css
 	return fixedCss;
 };
-
-
-/***/ }),
-/* 40 */
-/***/ (function(module, exports, __webpack_require__) {
-
-var rng = __webpack_require__(41);
-var bytesToUuid = __webpack_require__(42);
-
-// **`v1()` - Generate time-based UUID**
-//
-// Inspired by https://github.com/LiosK/UUID.js
-// and http://docs.python.org/library/uuid.html
-
-var _nodeId;
-var _clockseq;
-
-// Previous uuid creation time
-var _lastMSecs = 0;
-var _lastNSecs = 0;
-
-// See https://github.com/broofa/node-uuid for API details
-function v1(options, buf, offset) {
-  var i = buf && offset || 0;
-  var b = buf || [];
-
-  options = options || {};
-  var node = options.node || _nodeId;
-  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
-
-  // node and clockseq need to be initialized to random values if they're not
-  // specified.  We do this lazily to minimize issues related to insufficient
-  // system entropy.  See #189
-  if (node == null || clockseq == null) {
-    var seedBytes = rng();
-    if (node == null) {
-      // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
-      node = _nodeId = [
-        seedBytes[0] | 0x01,
-        seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]
-      ];
-    }
-    if (clockseq == null) {
-      // Per 4.2.2, randomize (14 bit) clockseq
-      clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 0x3fff;
-    }
-  }
-
-  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
-  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
-  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
-  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
-  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
-
-  // Per 4.2.1.2, use count of uuid's generated during the current clock
-  // cycle to simulate higher resolution clock
-  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
-
-  // Time since last uuid creation (in msecs)
-  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
-
-  // Per 4.2.1.2, Bump clockseq on clock regression
-  if (dt < 0 && options.clockseq === undefined) {
-    clockseq = clockseq + 1 & 0x3fff;
-  }
-
-  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
-  // time interval
-  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
-    nsecs = 0;
-  }
-
-  // Per 4.2.1.2 Throw error if too many uuids are requested
-  if (nsecs >= 10000) {
-    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
-  }
-
-  _lastMSecs = msecs;
-  _lastNSecs = nsecs;
-  _clockseq = clockseq;
-
-  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
-  msecs += 12219292800000;
-
-  // `time_low`
-  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
-  b[i++] = tl >>> 24 & 0xff;
-  b[i++] = tl >>> 16 & 0xff;
-  b[i++] = tl >>> 8 & 0xff;
-  b[i++] = tl & 0xff;
-
-  // `time_mid`
-  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
-  b[i++] = tmh >>> 8 & 0xff;
-  b[i++] = tmh & 0xff;
-
-  // `time_high_and_version`
-  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
-  b[i++] = tmh >>> 16 & 0xff;
-
-  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
-  b[i++] = clockseq >>> 8 | 0x80;
-
-  // `clock_seq_low`
-  b[i++] = clockseq & 0xff;
-
-  // `node`
-  for (var n = 0; n < 6; ++n) {
-    b[i + n] = node[n];
-  }
-
-  return buf ? buf : bytesToUuid(b);
-}
-
-module.exports = v1;
-
-
-/***/ }),
-/* 41 */
-/***/ (function(module, exports) {
-
-// Unique ID creation requires a high quality random # generator.  In the
-// browser this is a little complicated due to unknown quality of Math.random()
-// and inconsistent support for the `crypto` API.  We do the best we can via
-// feature-detection
-
-// getRandomValues needs to be invoked in a context where "this" is a Crypto implementation.
-var getRandomValues = (typeof(crypto) != 'undefined' && crypto.getRandomValues.bind(crypto)) ||
-                      (typeof(msCrypto) != 'undefined' && msCrypto.getRandomValues.bind(msCrypto));
-if (getRandomValues) {
-  // WHATWG crypto RNG - http://wiki.whatwg.org/wiki/Crypto
-  var rnds8 = new Uint8Array(16); // eslint-disable-line no-undef
-
-  module.exports = function whatwgRNG() {
-    getRandomValues(rnds8);
-    return rnds8;
-  };
-} else {
-  // Math.random()-based (RNG)
-  //
-  // If all else fails, use Math.random().  It's fast, but is of unspecified
-  // quality.
-  var rnds = new Array(16);
-
-  module.exports = function mathRNG() {
-    for (var i = 0, r; i < 16; i++) {
-      if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
-      rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
-    }
-
-    return rnds;
-  };
-}
-
-
-/***/ }),
-/* 42 */
-/***/ (function(module, exports) {
-
-/**
- * Convert array of 16 byte values to UUID string format of the form:
- * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
- */
-var byteToHex = [];
-for (var i = 0; i < 256; ++i) {
-  byteToHex[i] = (i + 0x100).toString(16).substr(1);
-}
-
-function bytesToUuid(buf, offset) {
-  var i = offset || 0;
-  var bth = byteToHex;
-  return bth[buf[i++]] + bth[buf[i++]] +
-          bth[buf[i++]] + bth[buf[i++]] + '-' +
-          bth[buf[i++]] + bth[buf[i++]] + '-' +
-          bth[buf[i++]] + bth[buf[i++]] + '-' +
-          bth[buf[i++]] + bth[buf[i++]] + '-' +
-          bth[buf[i++]] + bth[buf[i++]] +
-          bth[buf[i++]] + bth[buf[i++]] +
-          bth[buf[i++]] + bth[buf[i++]];
-}
-
-module.exports = bytesToUuid;
 
 
 /***/ })
