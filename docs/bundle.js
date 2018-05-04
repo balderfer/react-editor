@@ -19572,7 +19572,8 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
     return {
       text: this.props.data.text,
       characterStyles: this.props.data.characterStyles,
-      selectionRange: [0, 0]
+      selectionRange: [0, 0],
+      shouldReinstateRange: false
     };
   }
 
@@ -19592,9 +19593,10 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
     return this.getRangeEnd() - this.getRangeStart();
   }
 
-  handleUpdateCharacterStyles(newCharacterStyles) {
+  handleUpdateCharacterStyles(options) {
     this.setState({
-      characterStyles: newCharacterStyles
+      characterStyles: options.characterStyles,
+      shouldReinstateRange: options.shouldReinstateRange
     });
   }
 
@@ -19604,10 +19606,11 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
       let selectionRangeStart = selectionRange.startOffset;
       let selectionRangeEnd = selectionRange.endOffset;
 
-      if (selectionRange.startContainer.parentNode.nodeName === "SPAN") {
+      if (selectionRange.startContainer.parentNode && selectionRange.startContainer.parentNode.nodeName === "SPAN") {
         selectionRangeStart += parseInt(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
+
       this.setState({
         selectionRange: [selectionRangeStart, selectionRangeEnd],
         range: selectionRange,
@@ -19638,6 +19641,8 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
     if (this.getRangeStart() === this.getRangeEnd()) {
       if (this.getRangeStart() > 0) {
         this.handleSingleCharacterDelete();
+      } else {
+        // Deletion at the beginning of block, need to merge this block into the previous block
       }
     } else {
       this.handleSelectionDelete();
@@ -19714,8 +19719,7 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
   handleReinstateRange() {
     const selection = window.getSelection();
     if (selection.rangeCount > 0) selection.removeAllRanges();
-    console.log(this.state.range);
-    selection.addRange(this.state.range);
+    selection.addRange(this.state.range.cloneRange());
   }
 
   renderPlaceholder() {
@@ -19729,7 +19733,6 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
       return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorControls_jsx__["a" /* default */], {
         selectionRange: this.state.selectionRange,
         range: this.state.range,
-        reinstateRange: this.handleReinstateRange.bind(this),
         characterStyles: this.state.characterStyles,
         updateCharacterStyles: this.handleUpdateCharacterStyles.bind(this)
       });
@@ -19755,6 +19758,8 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
           handleNavigateUp: this.handleNavigateUp.bind(this),
           handleNavigateDown: this.handleNavigateDown.bind(this),
           shouldFocus: this.props.shouldFocus,
+          shouldReinstateRange: this.state.shouldReinstateRange,
+          selectionRange: this.state.selectionRange,
           characterStyles: this.state.characterStyles
         })
       )
@@ -19779,10 +19784,13 @@ class Editor extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
 class EditorControls extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Component {
 
   handleStyleChange(style) {
-    this.props.updateCharacterStyles(this.props.characterStyles.map((styles, index) => {
-      if (index >= this.props.selectionRange[0] && index < this.props.selectionRange[1]) styles[style] = true;
-      return styles;
-    }));
+    this.props.updateCharacterStyles({
+      characterStyles: this.props.characterStyles.map((styles, index) => {
+        if (index >= this.props.selectionRange[0] && index < this.props.selectionRange[1]) styles[style] = true;
+        return styles;
+      }),
+      shouldReinstateRange: true
+    });
   }
 
   handleClick(options) {
@@ -19792,14 +19800,12 @@ class EditorControls extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compo
   }
 
   render() {
-    console.log(this.props.range);
-
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
       'div',
       { className: 'editor-controls' },
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Bold', style: 'bold', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange }),
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Italic', style: 'italic', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange }),
-      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Link', style: 'link', handleClick: this.handleClick.bind(this), reinstateRange: this.props.reinstateRange })
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Bold', style: 'bold', handleClick: this.handleClick.bind(this) }),
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Italic', style: 'italic', handleClick: this.handleClick.bind(this) }),
+      __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(__WEBPACK_IMPORTED_MODULE_1__EditorButton_jsx__["a" /* default */], { contents: 'Link', style: 'link', handleClick: this.handleClick.bind(this) })
     );
   }
 
@@ -19823,17 +19829,25 @@ class EditorButton extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compone
 
     this.onMouseDown = e => {
       e.preventDefault();
+      e.stopImmediatePropagation();
       this.props.handleClick({
         style: this.props.style
       });
     };
   }
 
+  componentDidMount() {
+    this.elem.addEventListener("mousedown", this.onMouseDown);
+  }
+
+  componentWillUnmout() {
+    this.elem.removeEventListener("mousedown", this.onMouseDown);
+  }
+
   render() {
     return __WEBPACK_IMPORTED_MODULE_0_react___default.a.createElement(
       "button",
       {
-        onMouseDown: this.onMouseDown,
         className: "editor-controls-button",
         ref: elem => {
           this.elem = elem;
@@ -19907,7 +19921,13 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
   }
 
   componentDidUpdate() {
-    if (this.props.shouldFocus) this.elem.focus();
+    if (this.props.shouldFocus) {
+      if (document.activeElement !== this.elem) {
+        this.elem.focus();
+      } else if (this.props.shouldReinstateRange) {
+        this.reinstateRange();
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -19916,6 +19936,42 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
 
   shouldComponentUpdate(nextProps, nextState) {
     return nextProps.text !== this.elem["innerText"] || nextProps.characterStyles != this.props.characterStyles || this.props.shouldFocus !== nextProps.shouldFocus;
+  }
+
+  isWithinRange(index, start, length, isEnd) {
+    // console.log(`index: ${index}`);
+    // console.log(`start: ${start}`);
+    // console.log(`length: ${length}`);
+    // console.log(`index >= start: ${index >= start}`);
+    // console.log(`index <= (start + length): ${index <= (start + length)}`);
+    index = parseInt(index);
+    start = parseInt(start);
+    length = parseInt(length);
+
+    if (isEnd) {
+      return index > start && index <= start + length;
+    } else {
+      return index >= start && index < start + length;
+    }
+  }
+
+  reinstateRange() {
+    let newRange = new Range();
+
+    for (let i = 0; i < this.elem.children.length; i++) {
+      const child = this.elem.children[i];
+
+      if (this.isWithinRange(this.props.selectionRange[0], child.dataset.nodeIndex, child.dataset.nodeLength, false)) {
+        newRange.setStart(child.firstChild, this.props.selectionRange[0] - child.dataset.nodeIndex);
+      }
+
+      if (this.isWithinRange(this.props.selectionRange[1], child.dataset.nodeIndex, child.dataset.nodeLength, true)) {
+        newRange.setEnd(child.firstChild, this.props.selectionRange[1] - child.dataset.nodeIndex);
+      }
+    }
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) selection.removeAllRanges();
+    selection.addRange(newRange.cloneRange());
   }
 
   handleInput(e) {
@@ -19936,7 +19992,7 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
       },
       onSelect: this.props.handleSelection,
       onInput: this.handleInput.bind(this),
-      onFocus: this.props.handleFocus,
+      onClick: this.props.handleFocus,
       onBlur: this.handleBlur.bind(this),
       dangerouslySetInnerHTML: { __html: Object(__WEBPACK_IMPORTED_MODULE_1__utils_renderUtils_js__["a" /* renderFormattedText */])(this.props.text, this.props.characterStyles) }
     });
@@ -19960,18 +20016,32 @@ class EditorContent extends __WEBPACK_IMPORTED_MODULE_0_react___default.a.Compon
 
 
 function renderFormattedText(text, characterStyles) {
-  if (characterStyles.length === 0) return "";
+  if (characterStyles.length === 0) return `<span data-node-index=0></span>`;
 
   let formattedText = [];
   let textQueue = "";
   let currentStyle = characterStyles[0];
   let nodeIndex = 0;
   let i = 0;
+  let linkLock = false;
 
   for (i; i < characterStyles.length; i++) {
     // Style changes here, create a new node and clear textQueue and update currentStyle
     if (!__WEBPACK_IMPORTED_MODULE_0_underscore___default.a.isEqual(currentStyle, characterStyles[i])) {
-      formattedText.push(`<span data-node-index=${nodeIndex} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+
+      //insert beginning of <a href...> if we're inserting link
+      // if (currentStyle.link && !linkLock) {
+      //   formattedText.push(`<a href="#">`);
+      //   linkLock = true;
+      // }
+
+      formattedText.push(`<span data-node-index=${nodeIndex} data-node-length=${textQueue.length} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+
+      // if (currentStyle.link && !characterStyles[i].link) {
+      //   formattedText.push(`</a>`);
+      //   linkLock = false;
+      // }
+
       textQueue = "";
       currentStyle = characterStyles[i];
       nodeIndex = i;
@@ -19980,7 +20050,17 @@ function renderFormattedText(text, characterStyles) {
     textQueue += text[i];
   }
 
-  formattedText.push(`<span data-node-index=${nodeIndex} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+  // if (currentStyle.link && !linkLock) {
+  //   formattedText.push(`<a href="#">`);
+  //   linkLock = true;
+  // }
+
+  formattedText.push(`<span data-node-index=${nodeIndex} data-node-length=${textQueue.length} class="${__WEBPACK_IMPORTED_MODULE_1_classnames___default()(currentStyle)}">${textQueue}</span>`);
+
+  // if (currentStyle.link) {
+  //   formattedText.push(`</a>`);
+  //   linkLock = false;
+  // }
 
   return formattedText.join("");
 }
@@ -22013,7 +22093,7 @@ exports = module.exports = __webpack_require__(40)(false);
 
 
 // module
-exports.push([module.i, "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\nhtml, body, div, span, applet, object, iframe,\nh1, h2, h3, h4, h5, h6, p, blockquote, pre,\na, abbr, acronym, address, big, button cite, code,\ndel, dfn, em, img, ins, kbd, q, s, samp,\nsmall, strike, strong, sub, sup, tt, var,\nb, u, i, center,\ndl, dt, dd, ol, ul, li,\nfieldset, form, label, legend,\ntable, caption, tbody, tfoot, thead, tr, th, td,\narticle, aside, canvas, details, embed,\nfigure, figcaption, footer, header, hgroup,\nmenu, nav, output, ruby, section, summary,\ntime, mark, audio, video {\n  margin: 0;\n  padding: 0;\n  border: 0;\n  font-size: 100%;\n  font: inherit;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl;\n  vertical-align: baseline; }\n\n@media only screen and (max-width: 768px) {\n  html, body {\n    font-size: 12px; } }\n\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure,\nfooter, header, hgroup, menu, nav, section {\n  display: block; }\n\nbody {\n  line-height: 1; }\n\nol, ul {\n  list-style: none; }\n\nblockquote, q {\n  quotes: none; }\n\nblockquote:before, blockquote:after,\nq:before, q:after {\n  content: '';\n  content: none; }\n\ntable {\n  border-collapse: collapse;\n  border-spacing: 0; }\n\n.content {\n  max-width: 560px;\n  margin: 0 auto;\n  margin-top: 60px;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl; }\n\n.editor-content-container {\n  position: relative; }\n  .editor-content-container .editor-placeholder {\n    position: absolute;\n    z-index: 0;\n    color: gray;\n    height: 24px;\n    padding: 7px 8px 2px; }\n  .editor-content-container .editor-content {\n    position: relative;\n    z-index: 1;\n    -webkit-user-modify: read-write-plaintext-only;\n    height: 24px;\n    padding: 7px 8px 2px; }\n    .editor-content-container .editor-content:focus {\n      outline: none; }\n    .editor-content-container .editor-content .bold {\n      font-weight: 700; }\n    .editor-content-container .editor-content .italic {\n      font-style: italic; }\n    .editor-content-container .editor-content .link {\n      text-decoration: underline; }\n\n.editor {\n  position: relative; }\n  .editor .editor-controls {\n    position: absolute;\n    height: 24px;\n    top: -24px;\n    box-shadow: 0 2px 4px gray;\n    padding: 2px;\n    box-sizing: border-box;\n    z-index: 10;\n    background: white;\n    border-radius: 4px; }\n    .editor .editor-controls .editor-controls-button {\n      font-size: 12px;\n      text-transform: uppercase;\n      height: 20px;\n      margin: 0;\n      margin-right: 2px;\n      font-weight: 700;\n      color: gray;\n      border-radius: 2px;\n      border: none; }\n      .editor .editor-controls .editor-controls-button:last-child {\n        margin-right: 0; }\n      .editor .editor-controls .editor-controls-button:hover {\n        background: lightgray;\n        color: black; }\n", ""]);
+exports.push([module.i, "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\nhtml, body, div, span, applet, object, iframe,\nh1, h2, h3, h4, h5, h6, p, blockquote, pre,\na, abbr, acronym, address, big, button cite, code,\ndel, dfn, em, img, ins, kbd, q, s, samp,\nsmall, strike, strong, sub, sup, tt, var,\nb, u, i, center,\ndl, dt, dd, ol, ul, li,\nfieldset, form, label, legend,\ntable, caption, tbody, tfoot, thead, tr, th, td,\narticle, aside, canvas, details, embed,\nfigure, figcaption, footer, header, hgroup,\nmenu, nav, output, ruby, section, summary,\ntime, mark, audio, video {\n  margin: 0;\n  padding: 0;\n  border: 0;\n  font-size: 100%;\n  font: inherit;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl;\n  vertical-align: baseline; }\n\n@media only screen and (max-width: 768px) {\n  html, body {\n    font-size: 12px; } }\n\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure,\nfooter, header, hgroup, menu, nav, section {\n  display: block; }\n\nbody {\n  line-height: 1; }\n\nol, ul {\n  list-style: none; }\n\nblockquote, q {\n  quotes: none; }\n\nblockquote:before, blockquote:after,\nq:before, q:after {\n  content: '';\n  content: none; }\n\ntable {\n  border-collapse: collapse;\n  border-spacing: 0; }\n\n.content {\n  max-width: 560px;\n  margin: 0 auto;\n  margin-top: 60px;\n  font-family: -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serifl; }\n\n.editor-content-container {\n  position: relative; }\n  .editor-content-container .editor-placeholder {\n    position: absolute;\n    z-index: 0;\n    color: gray;\n    height: 24px;\n    padding: 7px 8px 2px; }\n  .editor-content-container .editor-content {\n    position: relative;\n    z-index: 1;\n    -webkit-user-modify: read-write-plaintext-only;\n    height: 24px;\n    padding: 7px 8px 2px; }\n    .editor-content-container .editor-content:focus {\n      outline: none; }\n    .editor-content-container .editor-content .bold {\n      font-weight: 700; }\n    .editor-content-container .editor-content .italic {\n      font-style: italic; }\n    .editor-content-container .editor-content .link {\n      text-decoration: underline; }\n    .editor-content-container .editor-content a {\n      font-weight: 500;\n      color: inherit;\n      position: relative; }\n      .editor-content-container .editor-content a::after {\n        position: absolute;\n        width: 100%;\n        bottom: 2px;\n        height: 2px;\n        background: gray; }\n\n.editor {\n  position: relative; }\n  .editor .editor-controls {\n    position: absolute;\n    height: 24px;\n    top: -24px;\n    box-shadow: 0 2px 4px gray;\n    padding: 2px;\n    box-sizing: border-box;\n    z-index: 10;\n    background: white;\n    border-radius: 4px; }\n    .editor .editor-controls .editor-controls-button {\n      font-size: 12px;\n      text-transform: uppercase;\n      height: 20px;\n      margin: 0;\n      margin-right: 2px;\n      font-weight: 700;\n      color: gray;\n      border-radius: 2px;\n      border: none; }\n      .editor .editor-controls .editor-controls-button:last-child {\n        margin-right: 0; }\n      .editor .editor-controls .editor-controls-button:hover {\n        background: lightgray;\n        color: black;\n        cursor: pointer; }\n", ""]);
 
 // exports
 

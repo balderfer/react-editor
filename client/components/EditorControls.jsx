@@ -4,10 +4,13 @@ import EditorButton from './EditorButton.jsx';
 export default class EditorControls extends React.Component {
 
   handleStyleChange(style) {
-    this.props.updateCharacterStyles(this.props.characterStyles.map((styles, index) => {
-      if (index >= this.props.selectionRange[0] && index < this.props.selectionRange[1]) styles[style] = true;
-      return styles;
-    }));
+    this.props.updateCharacterStyles({
+      characterStyles: this.props.characterStyles.map((styles, index) => {
+        if (index >= this.props.selectionRange[0] && index < this.props.selectionRange[1]) styles[style] = true;
+        return styles;
+      }),
+      shouldReinstateRange: true
+    });
   }
 
   handleClick(options) {
@@ -17,13 +20,11 @@ export default class EditorControls extends React.Component {
   }
 
   render() {
-    console.log(this.props.range);
-
     return (
       <div className="editor-controls">
-        <EditorButton contents="Bold" style="bold" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
-        <EditorButton contents="Italic" style="italic" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
-        <EditorButton contents="Link" style="link" handleClick={this.handleClick.bind(this)} reinstateRange={this.props.reinstateRange}/>
+        <EditorButton contents="Bold" style="bold" handleClick={this.handleClick.bind(this)} />
+        <EditorButton contents="Italic" style="italic" handleClick={this.handleClick.bind(this)} />
+        <EditorButton contents="Link" style="link" handleClick={this.handleClick.bind(this)} />
       </div>
     );
   }

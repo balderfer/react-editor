@@ -43,6 +43,20 @@ $pageWidth: 560px;
     .link {
       text-decoration: underline;
     }
+
+    a {
+      font-weight: 500;
+      color: inherit;
+      position: relative;
+
+      &::after {
+        position: absolute;
+        width: 100%;
+        bottom: 2px;
+        height: 2px;
+        background: gray;
+      }
+    }
   } 
 }
 
@@ -79,6 +93,7 @@ $pageWidth: 560px;
       &:hover {
         background: lightgray;
         color: black;
+        cursor: pointer;
       }
     }
   }

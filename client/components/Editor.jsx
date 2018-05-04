@@ -14,7 +14,8 @@ export default class Editor extends React.Component {
     return {
       text: this.props.data.text,
       characterStyles: this.props.data.characterStyles,
-      selectionRange: [0, 0]
+      selectionRange: [0, 0],
+      shouldReinstateRange: false
     }
   }
 
@@ -34,9 +35,10 @@ export default class Editor extends React.Component {
     return this.getRangeEnd() - this.getRangeStart();
   }
 
-  handleUpdateCharacterStyles(newCharacterStyles) {
+  handleUpdateCharacterStyles(options) {
     this.setState({
-      characterStyles: newCharacterStyles
+      characterStyles: options.characterStyles,
+      shouldReinstateRange: options.shouldReinstateRange
     });
   }
 
@@ -46,10 +48,11 @@ export default class Editor extends React.Component {
       let selectionRangeStart = selectionRange.startOffset;
       let selectionRangeEnd = selectionRange.endOffset;
 
-      if (selectionRange.startContainer.parentNode.nodeName === "SPAN") {
+      if (selectionRange.startContainer.parentNode && selectionRange.startContainer.parentNode.nodeName === "SPAN") {
         selectionRangeStart += parseInt(selectionRange.startContainer.parentNode.dataset.nodeIndex);
         selectionRangeEnd += parseInt(selectionRange.endContainer.parentNode.dataset.nodeIndex);
       }
+
       this.setState({
         selectionRange: [selectionRangeStart, selectionRangeEnd],
         range: selectionRange,
@@ -81,6 +84,8 @@ export default class Editor extends React.Component {
     if (this.getRangeStart() === this.getRangeEnd()) {
       if (this.getRangeStart() > 0) {
         this.handleSingleCharacterDelete();
+      } else {
+        // Deletion at the beginning of block, need to merge this block into the previous block
       }
     } else {
       this.handleSelectionDelete();
@@ -157,7 +162,7 @@ export default class Editor extends React.Component {
   handleReinstateRange() {
     const selection = window.getSelection();
     if (selection.rangeCount > 0) selection.removeAllRanges();
-    selection.addRange(this.state.range);
+    selection.addRange(this.state.range.cloneRange());
   }
 
   renderPlaceholder() {
@@ -172,7 +177,6 @@ export default class Editor extends React.Component {
         <EditorControls
           selectionRange={this.state.selectionRange}
           range={this.state.range}
-          reinstateRange={this.handleReinstateRange.bind(this)}
           characterStyles={this.state.characterStyles}
           updateCharacterStyles={this.handleUpdateCharacterStyles.bind(this)}
         />
@@ -196,6 +200,8 @@ export default class Editor extends React.Component {
             handleNavigateUp={this.handleNavigateUp.bind(this)}
             handleNavigateDown={this.handleNavigateDown.bind(this)}
             shouldFocus={this.props.shouldFocus}
+            shouldReinstateRange={this.state.shouldReinstateRange}
+            selectionRange={this.state.selectionRange}
             characterStyles={this.state.characterStyles}
           />
         </div>

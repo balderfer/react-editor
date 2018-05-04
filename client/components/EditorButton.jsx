@@ -7,16 +7,24 @@ export default class EditorButton extends React.Component {
 
     this.onMouseDown = (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
       this.props.handleClick({
         style: this.props.style
       });
     };
   }
 
+  componentDidMount() {
+    this.elem.addEventListener("mousedown", this.onMouseDown);
+  }
+
+  componentWillUnmout() {
+    this.elem.removeEventListener("mousedown", this.onMouseDown);
+  }
+
   render() {
     return (
       <button
-        onMouseDown={this.onMouseDown}
         className="editor-controls-button"
         ref={(elem) => { this.elem = elem }}
       >
